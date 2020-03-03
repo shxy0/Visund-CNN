@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# This notebook describes the implementation of deconvnets(transpose convolution) in keras and further use it for the purpose of feature visualization.
+# This notebook describes the implementation of deconvnets
+# (transpose convolution) in keras 
+# and further use it for the purpose of feature visualization.
 
 # In[1]:
-
 
 # Import necessary libraries
 import numpy as np
@@ -17,7 +18,6 @@ import PIL
 
 # In[2]:
 
-
 import tensorflow as tf
 
 # from tensorflow import keras
@@ -26,14 +26,12 @@ import keras
 
 # In[3]:
 
-
 from keras.layers import Input, InputLayer, Flatten, Activation, Dense, Conv2D
 
 from keras.layers.convolutional import Convolution2D, MaxPooling2D
 
 
 # In[4]:
-
 
 from keras.activations  import *
 from keras.models       import Model, Sequential
@@ -44,17 +42,17 @@ import keras.backend as K
 
 # In[5]:
 
-
 import math
 import matplotlib.pyplot as plt
 
 # Here for each layer we have defined a class for each type of layer. 
 # We have defined methods for forward pass and backward pass. 
 # During backward pass we use deconvnet. 
-# Here the term deconvolution is used for decribing transpose convolution operation.
+# Here the term deconvolution is used for decribing transpose convolution.
 
+
+# -----------------------------------------------------------------------------81
 # In[6]:
-
 
 class DConvolution2D(object):
     
@@ -73,10 +71,10 @@ class DConvolution2D(object):
         
         input_img = Input(shape = layer.input_shape[1:])
 
-        output = Conv2D(filters, (up_row, up_col), 
-                        kernel_initializer = tf.constant_initializer(W),
-                        bias_initializer   = tf.constant_initializer(b),
-                        padding='same'
+        output = Conv2D ( filters, (up_row, up_col), 
+                          kernel_initializer = tf.constant_initializer(W),
+                          bias_initializer   = tf.constant_initializer(b),
+                          padding = 'same'
                         )(input_img)
         
         self.up_func = K.function([input_img, K.learning_phase()], [output])
@@ -85,7 +83,7 @@ class DConvolution2D(object):
         W = np.transpose(W, (0,1,3,2))
         
         # Reverse columns and rows
-        W = W[::-1, ::-1,:,:]
+        W = W[::-1, ::-1, :, :]
         
         down_filters = W.shape[3]
         
@@ -96,17 +94,18 @@ class DConvolution2D(object):
         
         input_d = Input(shape = layer.output_shape[1:])
 
-        output = keras.layers.Conv2D(down_filters, (down_row, down_col),
-                                     kernel_initializer = tf.constant_initializer(W),
-                                     bias_initializer   = tf.constant_initializer(b),
-                                     padding = 'same'
-                                    )(input_d)
+        output = Conv2D ( down_filters, (down_row, down_col),
+                          kernel_initializer = tf.constant_initializer(W),
+                          bias_initializer   = tf.constant_initializer(b),
+                          padding = 'same'
+                        )(input_d)
         
         self.down_func = K.function([input_d, K.learning_phase()], [output])
 
     def up(self, data, learning_phase = 0):
-        #Forward pass
+        # Forward pass
         self.up_data = self.up_func([data, learning_phase])
+        
         self.up_data = np.squeeze(self.up_data, axis=0)
         self.up_data = np.expand_dims(self.up_data, axis=0)
         
@@ -116,6 +115,7 @@ class DConvolution2D(object):
     def down(self, data, learning_phase = 0):
         # Backward pass
         self.down_data = self.down_func([data, learning_phase])
+        
         self.down_data = np.squeeze(self.down_data, axis=0)
         self.down_data = np.expand_dims(self.down_data, axis=0)
         
@@ -123,10 +123,11 @@ class DConvolution2D(object):
         return self.down_data
 
 
+# -----------------------------------------------------------------------------81
 # In[7]:
 
-
 class DActivation(object):
+
     def __init__(self, layer, linear = False):
         
         self.layer = layer
@@ -140,17 +141,15 @@ class DActivation(object):
         # According to the original paper, 
         # In forward pass and backward pass, do the same activation(relu)
         
-        # Up method
-        self.up_func = K.function([input, K.learning_phase()], [output])
-        
-        # Down method
+        self.up_func   = K.function([input, K.learning_phase()], [output])
         self.down_func = K.function([input, K.learning_phase()], [output])
    
     def up(self, data, learning_phase = 0):
         
         self.up_data = self.up_func([data, learning_phase])
-        self.up_data = np.squeeze(self.up_data,axis=0)
-        self.up_data = np.expand_dims(self.up_data,axis=0)
+
+        self.up_data = np.squeeze(self.up_data, axis=0)
+        self.up_data = np.expand_dims(self.up_data, axis=0)
         
         print(self.up_data.shape)
         return self.up_data
@@ -158,15 +157,16 @@ class DActivation(object):
     def down(self, data, learning_phase = 0):
         
         self.down_data = self.down_func([data, learning_phase])
-        self.down_data = np.squeeze(self.down_data,axis=0)
-        self.down_data = np.expand_dims(self.down_data,axis=0)
+        
+        self.down_data = np.squeeze(self.down_data, axis=0)
+        self.down_data = np.expand_dims(self.down_data, axis=0)
         
         print(self.down_data.shape)
         return self.down_data
 
 
+# -----------------------------------------------------------------------------81
 # In[8]:
-
 
 class DInput(object):
 
@@ -181,14 +181,15 @@ class DInput(object):
     
     def down(self, data, learning_phase = 0):
 
-        # data = np.squeeze(data,axis=0)
-        data = np.expand_dims(data,axis=0)
+        # data = np.squeeze(data, axis=0)
+        data = np.expand_dims(data, axis=0)
+        
         self.down_data = data
         return self.down_data
 
 
+# -----------------------------------------------------------------------------81
 # In[8]:
-
 
 class DDense(object):
   
@@ -205,34 +206,35 @@ class DDense(object):
         
         output = Dense( layer.output_shape[1],
                         kernel_initializer = tf.constant_initializer(W),
-                        bias_initializer = tf.constant_initializer(b)
+                        bias_initializer   = tf.constant_initializer(b)
                       )(input)
         
         self.up_func = K.function([input, K.learning_phase()], [output])
         
-        #Transpose W  for down method
+        # Transpose W for down method
         W = W.transpose()
-        self.input_shape = layer.input_shape
+        
+        self.input_shape  = layer.input_shape
         self.output_shape = layer.output_shape
         
         b = np.zeros(self.input_shape[1])
-        flipped_weights = [W, b]
+        # flipped_weights = [W, b]
         
         input = Input(shape = self.output_shape[1:])
         
         output = Dense( self.input_shape[1:],
                         kernel_initializer = tf.constant_initializer(W),
-                        bias_initializer = tf.constant_initializer(b)
+                        bias_initializer   = tf.constant_initializer(b)
                       )(input)
         
         self.down_func = K.function([input, K.learning_phase()], [output])
-    
 
     def up(self, data, learning_phase = 0):
         
         self.up_data = self.up_func([data, learning_phase])
-        self.up_data = np.squeeze(self.up_data,axis=0)
-        self.up_data = np.expand_dims(self.up_data,axis=0)
+        
+        self.up_data = np.squeeze(self.up_data, axis=0)
+        self.up_data = np.expand_dims(self.up_data, axis=0)
         
         print(self.up_data.shape)
         return self.up_data
@@ -240,15 +242,16 @@ class DDense(object):
     def down(self, data, learning_phase = 0):
     
         self.down_data = self.down_func([data, learning_phase])
-        self.down_data = np.squeeze(self.down_data,axis=0)
-        self.down_data = np.expand_dims(self.down_data,axis=0)
+        
+        self.down_data = np.squeeze(self.down_data, axis=0)
+        self.down_data = np.expand_dims(self.down_data, axis=0)
         
         print(self.down_data.shape)
         return self.down_data
 
 
+# -----------------------------------------------------------------------------81
 # In[9]:
-
 
 class DFlatten(object):
 
@@ -256,15 +259,17 @@ class DFlatten(object):
    
         self.layer = layer
         self.shape = layer.input_shape[1:]
-        self.up_func = K.function(
-                [layer.input, K.learning_phase()], [layer.output])
+
+        self.up_func 
+          = K.function([layer.input, K.learning_phase()], [layer.output])
 
     # Flatten 2D input into 1D output
     def up(self, data, learning_phase = 0):
         
         self.up_data = self.up_func([data, learning_phase])
-        self.up_data = np.squeeze(self.up_data,axis=0)
-        self.up_data = np.expand_dims(self.up_data,axis=0)
+        
+        self.up_data = np.squeeze(self.up_data, axis=0)
+        self.up_data = np.expand_dims(self.up_data, axis=0)
 
         print(self.up_data.shape)
         return self.up_data
@@ -272,12 +277,15 @@ class DFlatten(object):
     # Reshape 1D input into 2D output
     def down(self, data, learning_phase = 0):
 
-        new_shape = [data.shape[0]] + list(self.shape)
         assert np.prod(self.shape) == np.prod(data.shape[1:])
+
+        new_shape = [data.shape[0]] + list(self.shape)
+        
         self.down_data = np.reshape(data, new_shape)
         return self.down_data
 
 
+# -----------------------------------------------------------------------------81
 # In[10]:
 
 
@@ -287,16 +295,21 @@ class DPooling(object):
 
         self.layer = layer
         self.poolsize = layer.pool_size
-       
-    
+
     def up(self, data, learning_phase = 0):
 
-        [self.up_data, self.switch] = self.__max_pooling_with_switch(data, self.poolsize)
+        [self.up_data, self.switch] 
+            = 
+            self.__max_pooling_with_switch(data, self.poolsize)
+            
         return self.up_data
 
     def down(self, data, learning_phase = 0):
       
-        self.down_data = self.__max_unpooling_with_switch(data, self.switch)
+        self.down_data 
+            = 
+            self.__max_unpooling_with_switch(data, self.switch)
+            
         return self.down_data
     
     def __max_pooling_with_switch(self, input, poolsize):
@@ -337,34 +350,40 @@ class DPooling(object):
                 switch[sample, 
                         row * row_poolsize + max_row, 
                         col * col_poolsize + max_col,
-                        dim]  = 1
+                        dim] = 1
                         
         return [pooled, switch]
     
     # Compute unpooled output using pooled data and switch
     def __max_unpooling_with_switch(self, input, switch):
 
-        print('switch '+str(switch.shape))
-        print('input  '+str(input.shape))
+        print('unpool switch ' + str(switch.shape))
+        # print('unpool input  ' + str(input.shape))
         
         tile = np.ones((math.floor(switch.shape[1] / input.shape[1]), 
                         math.floor(switch.shape[2] / input.shape[2])))
         
-        print('tile '+str(tile.shape))
+        print('unpool tile   ' + str(tile.shape))
         
-        tile  = np.expand_dims(tile,axis=3)
-        input = np.squeeze(input,axis=0)
+        # tile  = np.expand_dims(tile, axis=3)
+        tile  = np.expand_dims(tile, axis=2)
+        print('unpool expanded tile   ' + str(tile.shape))
+        
+        input = np.squeeze(input, axis=0)
+        print('unpool squeezed input  ' + str(input.shape))
         
         out = np.kron(input, tile)
-        print('out '+str(out.shape))
+        print('unpool out    ' + str(out.shape))
         
         unpooled = out * switch
-        unpooled = np.expand_dims(unpooled,axis=0)
+        print('unpool out    ' + str(unpooled.shape))
+        
+        unpooled = np.expand_dims(unpooled, axis=0)
         return unpooled
 
-
+        
+# -----------------------------------------------------------------------------81
 # In[11]:
-
 
 def visualize(model, data, layer_name, feature_to_visualize, visualize_mode):
     
@@ -388,6 +407,7 @@ def visualize(model, data, layer_name, feature_to_visualize, visualize_mode):
             
         elif isinstance(model.layers[i], Activation):
             
+            print('independent Activation layer found, what is model.alyers')
             deconv_layers.append(DActivation(model.alyers[i]))
             
         elif isinstance(model.layers[i], Flatten):
@@ -413,7 +433,7 @@ def visualize(model, data, layer_name, feature_to_visualize, visualize_mode):
         deconv_layers[i].up(deconv_layers[i - 1].up_data)
 
     output = deconv_layers[-1].up_data
-    print(output.shape)
+    print('output.shape ' + str(output.shape))
     
     assert output.ndim == 2 or output.ndim == 4
     
@@ -454,8 +474,6 @@ def visualize(model, data, layer_name, feature_to_visualize, visualize_mode):
 
 # In[12]:
 
-
-# image_path = "E:\GitHub\Transposed convolution Zeiler\kangaroo.jpg"
 image_path = "Results/Deconvnet/kangaroo.jpg"
 
 layer_name = 'block3_conv3'
@@ -465,12 +483,10 @@ visualize_mode = 'all'
 
 # In[14]:
 
-
 model = vgg16.VGG16(weights = 'imagenet', include_top = True)
 
 
 # In[15]:
-
 
 layer_dict = dict([(layer.name, layer) for layer in model.layers])
 
@@ -478,7 +494,6 @@ model.summary()
 
 
 # In[16]:
-
 
 # Load data and preprocess
 img = Image.open(image_path)
@@ -492,33 +507,28 @@ img_array = imagenet_utils.preprocess_input(img_array)
 
 # In[19]:
 
-
-#Original image
+# Original image
 plt.imshow(img_array[0])
 plt.show()
 
 
 # In[20]:
 
-
-
 deconv = visualize( model, img_array
                   , layer_name
                   , feature_to_visualize
                   , visualize_mode
                   )
-
+ 
 
 # In[21]:
 
-
-#After deconvolution-
+# After deconvolution-
 plt.imshow(deconv)
 plt.show()
 
 
 # In[22]:
-
 
 print(deconv.shape)
 
@@ -534,11 +544,10 @@ uint8_deconv = (deconv * 255).astype(np.uint8)
 
 # In[23]:
 
-
 img = Image.fromarray(uint8_deconv, 'RGB')
-img.save('Results/Deconvnet/kangaroo{}_{}_{}.png'.format(layer_name, feature_to_visualize, visualize_mode))
+img.save('Results/Deconvnet/kangaroo{}_{}_{}.png'.
+          format(layer_name, feature_to_visualize, visualize_mode))
+          
 plt.imshow(img)
 plt.show()
 
-
-# In[ ]:
